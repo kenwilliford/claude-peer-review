@@ -94,18 +94,19 @@ The Claude self-review subprocess runs with `--tools ""` (all tools disabled) --
 
 For a plan named `my-plan.md` with 2 rounds:
 
-| File | Author | Round |
-|------|--------|-------|
-| `my-plan-review.md` | Reviewer | 1 |
-| `my-plan-review-response.md` | Claude | 1 |
-| `my-plan-review2.md` | Reviewer | 2 |
-| `my-plan-review2-response.md` | Claude | 2 |
+| File | Author | Purpose |
+|------|--------|---------|
+| `my-plan-review.md` | Reviewer | Round 1 review |
+| `my-plan-review-response.md` | Claude | Round 1 response (describes revisions) |
+| `my-plan-review2.md` | Reviewer | Round 2 review |
+| `my-plan-review2-response.md` | Claude | Round 2 response |
+| **`my-plan-revised.md`** | **Claude** | **Revised spec — implementation-ready** |
 
-The final `*-response.md` is the key decision artifact -- it summarizes the full review process, residual risks, and implementation readiness.
+The original plan file is never modified. After the editor says GO, Claude produces `*-revised.md` by applying all accepted revisions from every round into a clean, standalone document. The review/response pairs are the audit trail showing how it got there.
 
 ## Design decisions
 
-- **Plan immutability**: The original plan file is never modified. All revisions are described in response documents. This keeps the review record coherent and auditable.
+- **Plan immutability during review**: The original plan stays unchanged during review rounds so reviewers see a consistent base. After GO, Claude produces a separate `*-revised.md` with all accepted changes applied.
 - **Temp file + stdin**: Prompts are written to a temp file and piped via stdin to avoid argument length limits and shell metacharacter issues.
 - **Structured editor decision**: After the final round, you're presented with explicit options (GO / Additional round / Different reviewer / NO-GO) rather than an open-ended prompt.
 - **Resume support**: If Round 1 artifacts already exist, the skill offers to resume at Round 2.

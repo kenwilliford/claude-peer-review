@@ -60,6 +60,11 @@ review. The default is 2 rounds, but more can be requested.
 │              Additional round — run another review round             │
 │              Different reviewer — switch to a different model        │
 │              NO-GO — abandon or rework outside this process          │
+├─────────────────────────────────────────────────────────────────────┤
+│                      FINALIZATION (on GO)                            │
+├─────────────────────────────────────────────────────────────────────┤
+│  [Claude]    Produces <name>-revised.md incorporating all accepted  │
+│              revisions from every round into the original plan       │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -74,9 +79,11 @@ For N rounds, the following files are produced:
 | `<name>-review2.md` | Reviewer | Round 2 review with GO/NO-GO |
 | `<name>-review2-response.md` | Claude | Round 2 response |
 | `<name>-review<N>.md` | Reviewer | Round N review (if additional rounds) |
-| `<name>-review<N>-response.md` | Claude | Round N response (final = key decision artifact) |
+| `<name>-review<N>-response.md` | Claude | Round N response |
+| `<name>-revised.md` | Claude | **Revised spec** — final output incorporating all accepted changes |
 
-The last `*-response.md` is always the **key decision artifact** for the editor.
+The `*-revised.md` is the implementation-ready document. The review/response
+pairs are the audit trail showing how it got there.
 
 ## Execution Steps
 
@@ -218,16 +225,20 @@ After capturing the reviewer's stdout:
 that failed and suggest troubleshooting. **Do NOT fall back to self-review
 silently.**
 
-#### Plan Immutability
+#### Plan Immutability During Review
 
-Claude MUST NOT modify the original plan file during the review process. All
-revisions are described in the response document (`*-review-response.md`).
+Claude MUST NOT modify the original plan file during the review rounds. All
+revisions are described in the response documents (`*-review-response.md`).
 The "original plan" passed to subsequent rounds is always the unmodified
-original. After the full process completes, the human editor decides
-whether and how to apply revisions to the plan.
+original.
 
-**Rationale:** Preserving the original makes the review record coherent and
-auditable — reviewers in later rounds can see exactly what changed and why.
+**After the editor says GO**, Claude produces a separate `<name>-revised.md`
+that incorporates all accepted revisions into the original plan (see Step 7).
+The original file is preserved as part of the audit trail.
+
+**Rationale:** Keeping the original stable during review means reviewers in
+later rounds see a consistent base document plus explicit change descriptions,
+rather than a moving target.
 
 ### Step 4: Launch Reviewer (Round 2+)
 
@@ -269,6 +280,25 @@ Also display:
 
 If the user selects "Additional round," increment the round cap by 1 and loop
 back to Step 4. If "Different reviewer," return to Step 0 (model selection).
+
+### Step 7: Finalize Revised Spec
+
+When the editor selects **GO**, Claude produces the revised spec:
+
+1. Start from the original plan content
+2. Walk through every response document in order, applying all revisions with
+   disposition **Accepted** or **Partially Accepted**
+3. Skip revisions with disposition **Acknowledged** or **Contested** (these
+   were noted but not adopted)
+4. Write the result as `<name>-revised.md` in the output directory
+5. Display: "Revised spec written to `<name>-revised.md`"
+
+The revised spec should read as a clean, standalone document — not a diff or
+changelog. It is the implementation-ready artifact.
+
+**What stays unchanged:** The original plan file and all review/response
+artifacts remain untouched. They form the audit trail showing how the
+revised spec was derived.
 
 ## Reviewer Prompt Construction
 
