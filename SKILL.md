@@ -23,13 +23,15 @@ review. The default is 2 rounds, but more can be requested.
 ## Invocation
 
 ```
-/peer-review <plan-file> [--output-dir=<dir>] [--rounds=<N>]
+/peer-review <plan-file> [--output-dir=<dir>] [--rounds=<N>] [--auto-go] [--reviewer=<model>]
 ```
 
 **Arguments:**
 - `<plan-file>`: Path to the plan/spec/design document to review
 - `--output-dir`: Directory for review artifacts (default: same as plan file)
 - `--rounds`: Number of review rounds (default: 2)
+- `--auto-go`: Autonomous mode — skip model selection (Step 0) and Editor Decision (Step 6). Runs rounds until the reviewer issues GO, or hits the round cap. Proceeds directly to finalization (Step 7). Requires `--reviewer`.
+- `--reviewer`: Specify reviewer CLI to use (e.g., `codex`, `gemini`, `claude`). Required when `--auto-go` is set. Skips the interactive model selection in Step 0.
 
 ## Workflow
 
@@ -89,8 +91,12 @@ pairs are the audit trail showing how it got there.
 
 ### Step 0: Detect Available Reviewers and Ask User
 
-When invoked, Claude MUST detect which reviewer CLIs are available and present
-a choice to the user. **Do NOT skip this step. Do NOT default to self-review.**
+**If `--auto-go` is set:** Skip this step entirely. Use the CLI specified by
+`--reviewer` (e.g., `--reviewer=codex` uses the `codex` CLI). Proceed to Step 1.
+
+When invoked without `--auto-go`, Claude MUST detect which reviewer CLIs are
+available and present a choice to the user. **Do NOT skip this step. Do NOT
+default to self-review.**
 
 **Detection commands** (run in parallel):
 
@@ -265,8 +271,18 @@ After capturing the reviewer's stdout for round N:
 
 ### Step 6: Editor Decision
 
-After the final round, present the human with a structured decision using
-AskUserQuestion with header "Editor Decision":
+**If `--auto-go` is set:** Skip this step. Instead, check the reviewer's
+assessment from the final round:
+- If the reviewer issued **GO** or **CONDITIONAL GO**: proceed directly to Step 7
+  (finalization).
+- If the reviewer issued **NO-GO** and the round cap has not been reached:
+  continue to the next round (loop back to Step 4).
+- If the reviewer issued **NO-GO** and the round cap has been reached: proceed
+  to Step 7 anyway — produce the revised spec incorporating all accepted
+  revisions. The parent process can decide what to do with the result.
+
+When invoked without `--auto-go`, present the human with a structured decision
+using AskUserQuestion with header "Editor Decision":
 
 - `GO — proceed to implementation` — "Review complete, plan is ready"
 - `Additional round — run another review round` — "Extend the review by one more round"
@@ -419,4 +435,7 @@ external reviewer fails, report the failure and let the user decide next steps.
 
 # With 3 review rounds
 /peer-review specs/COMPLEX_FEATURE.md --rounds=3
+
+# Autonomous mode (no human interaction — for use in automation)
+/peer-review specs/FEATURE.md --auto-go --reviewer=codex
 ```
