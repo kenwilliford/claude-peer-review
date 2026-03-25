@@ -21,31 +21,48 @@ A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill that runs 
 
 Each round produces a pair of artifacts (`*-review.md` and `*-review-response.md`) that form a complete audit trail.
 
-## Install
+## Quick Start
 
-Copy the skill into your Claude Code skills directory:
+### 1. Install the skill
+
+Claude Code automatically discovers skills placed in `~/.claude/skills/`. Clone this repo there:
 
 ```bash
 # User-level (available in all projects)
 git clone https://github.com/kenwilliford/claude-peer-review.git \
     ~/.claude/skills/peer-review
 
-# Or project-level
+# Or project-level (only in one project)
 git clone https://github.com/kenwilliford/claude-peer-review.git \
     .claude/skills/peer-review
 ```
 
-## Prerequisites
+**Important:** Clone the entire repo, not just `SKILL.md`. The skill references template files in `references/` that must be present alongside it.
 
-At least one reviewer CLI must be installed:
+### 2. Install at least one reviewer CLI
+
+Requires [Node.js](https://nodejs.org/) 18+ for npm installs.
 
 | Reviewer | Install | Auth |
 |----------|---------|------|
-| **Codex** | `npm install -g @openai/codex` | `codex login` |
-| **Gemini** | `npm install -g @google/gemini-cli@latest` | Google OAuth or API key |
+| **Codex** (recommended) | `npm install -g @openai/codex` | `codex login` |
+| **Gemini** | `npm install -g @google/gemini-cli@latest` | [Google AI API key](https://ai.google.dev/) or Google OAuth |
 | **Claude** (self-review) | Included with Claude Code | N/A |
 
 Cross-model review (Codex or Gemini) is recommended. Self-review provides structural value but less diversity of perspective.
+
+### 3. Verify installation
+
+Start (or restart) Claude Code and type `/peer-review` — it should appear in autocomplete. If it doesn't, check that `~/.claude/skills/peer-review/SKILL.md` exists.
+
+### 4. Run your first review
+
+```bash
+# In Claude Code, with a plan/spec file ready:
+/peer-review path/to/plan.md
+```
+
+Claude will detect available reviewer CLIs, ask you to choose one, then run the review. Output files appear alongside your plan.
 
 ## Usage
 
@@ -53,6 +70,9 @@ Cross-model review (Codex or Gemini) is recommended. Self-review provides struct
 /peer-review path/to/plan.md
 /peer-review path/to/plan.md --output-dir=reviews/
 /peer-review path/to/plan.md --rounds=3
+
+# Autonomous mode (no human interaction — for use in automation)
+/peer-review path/to/plan.md --auto-go --reviewer=codex
 ```
 
 The skill will detect available CLIs and ask you to choose a reviewer.
@@ -103,6 +123,20 @@ For a plan named `my-plan.md` with 2 rounds:
 | **`my-plan-revised.md`** | **Claude** | **Revised spec — implementation-ready** |
 
 The original plan file is never modified. After the editor says GO, Claude produces `*-revised.md` by applying all accepted revisions from every round into a clean, standalone document. The review/response pairs are the audit trail showing how it got there.
+
+## Updating
+
+If you installed via `git clone`, update with:
+
+```bash
+cd ~/.claude/skills/peer-review && git pull
+```
+
+## Uninstalling
+
+```bash
+rm -rf ~/.claude/skills/peer-review
+```
 
 ## Design decisions
 
